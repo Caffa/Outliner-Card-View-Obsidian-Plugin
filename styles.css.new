@@ -1,0 +1,125 @@
+/* filepath: /Users/caffae/Notes/TestPlugin/.obsidian/plugins/outliner-card-view/styles.css */
+/* Outliner Card View Plugin Styles */
+
+/* Card container */
+.outliner-card-container {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 15px 0;
+  background-color: var(--background-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Card title */
+.outliner-card-title {
+  font-size: 1.4em;
+  font-weight: bold;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+/* Card content */
+.outliner-card-content {
+  font-size: 1em;
+  color: var(--text-normal);
+}
+
+/* Card list */
+.outliner-card-list {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.outliner-card-list-item {
+  margin-bottom: 8px;
+}
+
+.outliner-card-list-item-text {
+  line-height: 1.5;
+}
+
+/* Navigation elements */
+.outliner-card-navigation {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.outliner-card-navigation-info {
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.outliner-card-navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.outliner-card-navigation-button {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.outliner-card-navigation-button:hover {
+  background-color: var(--interactive-accent-hover);
+}
+
+.outliner-card-selector-container {
+  flex: 1;
+  margin: 0 10px;
+}
+
+.outliner-card-selector {
+  width: 100%;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+}
+
+/* Edit button */
+.outliner-card-edit-button {
+  margin-top: 15px;
+  background-color: var(--interactive-normal);
+  color: var(--text-normal);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.outliner-card-edit-button:hover {
+  background-color: var(--interactive-hover);
+}
+
+/* Empty state */
+.outliner-card-empty-state {
+  padding: 30px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.outliner-card-empty-content {
+  padding: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Card transitions */
+.outliner-card-container.animate {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+

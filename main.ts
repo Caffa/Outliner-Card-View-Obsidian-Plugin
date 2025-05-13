@@ -97,6 +97,7 @@ export default class OutlinerCardViewPlugin extends Plugin {
                 return;
             }
 
+            // Get the indentation text to calculate level consistently with parseBulletPoints
             const indentText = bulletMatch[1];
             let indentWidth = 0;
             if (cmEditor && typeof cmEditor.defaultCharacterWidth === 'number') {
@@ -113,11 +114,19 @@ export default class OutlinerCardViewPlugin extends Plugin {
                 document.body.removeChild(tempSpan);
             }
 
-            // Calculate indentation level the same way as in parseBulletPoints
-            let tabCount = (indentText.match(/\t/g) || []).length;
-            let spaceCount = indentText.length - tabCount;
-            const level = tabCount + Math.ceil(spaceCount / 2);
-            const finalLevel = level === 0 ? 1 : level;
+            // Calculate indentation level consistent with parseBulletPoints
+            // Count both tabs and spaces for indentation
+            const tabCount = (indentText.match(/\t/g) || []).length;
+            const spaceCount = indentText.replace(/\t/g, '').length;
+            const spaceIndentLevel = Math.floor(spaceCount / 4);
+
+            // Calculate combined indentation level
+            const combinedIndent = tabCount + spaceIndentLevel;
+
+            // Use a simple approximation for hover icons
+            // Without parsing the entire document, we can't know exact level mapping
+            // But we can ensure top level (no indentation) is level 1
+            const finalLevel = combinedIndent === 0 ? 1 : combinedIndent + 1;
 
             const iconContainer = document.createElement('div');
             iconContainer.className = 'outliner-bullet-hover-container';
@@ -437,6 +446,10 @@ export default class OutlinerCardViewPlugin extends Plugin {
         const content = editor.getValue();
         const bulletPoints = this.parseBulletPoints(content);
 
+        // Optionally log bullet hierarchy for debugging
+        console.log(`Parsed bullet hierarchy for level ${level}:`);
+        this.logBulletHierarchy(bulletPoints);
+
         // Use the provided level instead of the default from settings
         const targetBullets = this.getBulletsAtLevel(bulletPoints, level);
 
@@ -485,10 +498,8 @@ export default class OutlinerCardViewPlugin extends Plugin {
 
         // Update the card view with the target bullets
         cardView.updateCards(targetBullets, this.activeEditor);
-    }
-
-    /**
-     * Parses bullet points from markdown content
+    }    /**
+     * Parses bullet points from markdown content using parent-based level assignment
      * @param content The markdown content to parse
      * @returns An array of parsed bullet points
      */
@@ -496,7 +507,6 @@ export default class OutlinerCardViewPlugin extends Plugin {
         const lines = content.split('\n');
         const rootBullets: BulletPoint[] = [];
         const stack: BulletPoint[] = [];
-        let currentLevel = 0;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -504,59 +514,66 @@ export default class OutlinerCardViewPlugin extends Plugin {
             const bulletMatch = line.match(/^(\s*)(-|\*|\d+\.)\s(.*)$/);
 
             if (bulletMatch) {
-                // Calculate indentation level based on leading whitespace
                 const indent = bulletMatch[1];
-                // Properly handle both tab and space indentation
-                // Count tabs as 1 level each, and spaces as 1 level per 2 spaces
-                let tabCount = (indent.match(/\t/g) || []).length;
-                let spaceCount = indent.length - tabCount; // remaining chars are spaces
-                const level = tabCount + Math.ceil(spaceCount / 2);
-                // Ensure minimum level of 1
-                const finalLevel = level === 0 ? 1 : level;
                 const text = bulletMatch[3].trim();
 
+                // Create new bullet point
                 const bulletPoint: BulletPoint = {
                     text,
-                    level: finalLevel,
+                    level: 1, // Default to level 1, will be adjusted based on parent
                     children: [],
                     lineStart: i,
                     lineEnd: i
                 };
 
-                // If it's a sub-bullet of the current bullet
-                if (finalLevel > currentLevel) {
-                    if (stack.length > 0) {
-                        // Add as child to the last item in stack
-                        stack[stack.length - 1].children.push(bulletPoint);
-                    } else {
-                        // No parent, add to root
-                        rootBullets.push(bulletPoint);
-                    }
+                // If stack is empty, this is a root bullet
+                if (stack.length === 0) {
+                    rootBullets.push(bulletPoint);
                     stack.push(bulletPoint);
+                    continue;
                 }
-                // If it's a sibling or higher up in the hierarchy
-                else {
-                    // Pop from stack until we find the right level
-                    while (stack.length > 0 && stack[stack.length - 1].level >= finalLevel) {
+
+                // Get indentation length of current bullet and last bullet in stack
+                const currentIndent = indent.length;
+                const lastBullet = stack[stack.length - 1];
+                const lastIndentMatch = lines[lastBullet.lineStart].match(/^(\s*)/);
+                const lastIndent = lastIndentMatch ? lastIndentMatch[0].length : 0;
+
+                // Compare indentation with last bullet
+                if (currentIndent > lastIndent) {
+                    // This is a child of the last bullet
+                    bulletPoint.level = lastBullet.level + 1;
+                    lastBullet.children.push(bulletPoint);
+                    stack.push(bulletPoint);
+                } else {
+                    // Pop stack until we find the right parent or reach root level
+                    while (stack.length > 0) {
+                        const parentBullet = stack[stack.length - 1];
+                        const parentIndentMatch = lines[parentBullet.lineStart].match(/^(\s*)/);
+                        const parentIndent = parentIndentMatch ? parentIndentMatch[0].length : 0;
+
+                        if (currentIndent > parentIndent) {
+                            // Found the parent
+                            bulletPoint.level = parentBullet.level + 1;
+                            parentBullet.children.push(bulletPoint);
+                            stack.push(bulletPoint);
+                            break;
+                        }
                         stack.pop();
                     }
 
-                    if (stack.length > 0) {
-                        // Add as child to the current stack top
-                        stack[stack.length - 1].children.push(bulletPoint);
-                    } else {
-                        // Add to root if no parent
+                    // If we popped everything, this is a root bullet
+                    if (stack.length === 0) {
+                        bulletPoint.level = 1;
                         rootBullets.push(bulletPoint);
+                        stack.push(bulletPoint);
                     }
-                    stack.push(bulletPoint);
                 }
-
-                currentLevel = finalLevel;
             }
-            // If not a bullet but a continuation of the current bullet
+            // Handle continuation lines
             else if (stack.length > 0 && line.trim() !== '') {
-                // Update the end line of the current bullet
-                stack[stack.length - 1].lineEnd = i;
+                const lastBullet = stack[stack.length - 1];
+                lastBullet.lineEnd = i;
             }
         }
 
@@ -572,18 +589,23 @@ export default class OutlinerCardViewPlugin extends Plugin {
     getBulletsAtLevel(bullets: BulletPoint[], targetLevel: number): BulletPoint[] {
         const result: BulletPoint[] = [];
 
-        // Recursive function to search through the bullet hierarchy
-        const findBulletsAtLevel = (bullet: BulletPoint, currentLevel: number) => {
+        // Enhanced recursive function to search through the bullet hierarchy
+        const findBulletsAtLevel = (bullet: BulletPoint, depth: number = 1) => {
+            // Check if this bullet matches the target level
             if (bullet.level === targetLevel) {
                 result.push(bullet);
-            } else if (bullet.level < targetLevel) {
-                // Continue searching in children
-                bullet.children.forEach(child => findBulletsAtLevel(child, currentLevel + 1));
             }
+            // Only search children if this bullet could be an ancestor of the target level
+            else if (bullet.level < targetLevel) {
+                // Continue searching in children
+                bullet.children.forEach(child => findBulletsAtLevel(child, depth + 1));
+            }
+            // Skip branches where the level is already higher than our target
+            // This optimization prevents unnecessary traversal
         };
 
         // Start search from each root bullet
-        bullets.forEach(bullet => findBulletsAtLevel(bullet, 1));
+        bullets.forEach(bullet => findBulletsAtLevel(bullet));
 
         return result;
     }
@@ -614,6 +636,20 @@ export default class OutlinerCardViewPlugin extends Plugin {
         processed = processed.replace(/`(.*?)`/g, '<code>$1</code>');
 
         return processed;
+    }
+
+    /**
+     * Logs the bullet point hierarchy (for debugging)
+     * @param bullets The bullet points to log
+     * @param indent The indentation level for the log
+     */
+    private logBulletHierarchy(bullets: BulletPoint[], indent: string = '') {
+        bullets.forEach(bullet => {
+            console.log(`${indent}Level ${bullet.level}: ${bullet.text} (Children: ${bullet.children.length})`);
+            if (bullet.children.length > 0) {
+                this.logBulletHierarchy(bullet.children, indent + '  ');
+            }
+        });
     }
 }
 
@@ -832,8 +868,11 @@ class CardView extends ItemView {
             // Add the bullet text
             this.renderFormattedBulletText(listItem, bullet.text);
 
-            // Recursively render children if any
+            // If there are children, add a class to the parent for styling
             if (bullet.children.length > 0) {
+                listItem.addClass('has-children');
+
+                // Recursively render children if any
                 this.renderNestedList(listItem, bullet.children);
             }
         });
@@ -1260,8 +1299,11 @@ class OverlayCardView {
             // Add the bullet text
             this.renderFormattedBulletText(listItem, bullet.text);
 
-            // Recursively render children if any
+            // If there are children, add a class to the parent for styling
             if (bullet.children.length > 0) {
+                listItem.addClass('has-children');
+
+                // Recursively render children if any
                 this.renderNestedList(listItem, bullet.children);
             }
         });

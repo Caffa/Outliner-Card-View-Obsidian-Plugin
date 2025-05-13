@@ -25,6 +25,18 @@
 .outliner-card-content {
   font-size: 1em;
   color: var(--text-normal);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Card content container styling */
+.outliner-card-content-container {
+  position: relative;
+  padding: 20px;
+  background-color: var(--background-primary);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 /* Card list */
@@ -35,10 +47,30 @@
 
 .outliner-card-list-item {
   margin-bottom: 8px;
+  padding: 3px 0;
 }
 
 .outliner-card-list-item-text {
   line-height: 1.5;
+}
+
+/* Improve nested list appearance */
+.outliner-card-content ul {
+  list-style-type: disc;
+}
+
+.outliner-card-content ul ul {
+  list-style-type: circle;
+}
+
+.outliner-card-content ul ul ul {
+  list-style-type: square;
+}
+
+/* Add visual separation between bullet point levels */
+.outliner-card-content ul ul {
+  margin-top: 5px;
+  margin-bottom: 5px;
 }
 
 /* Navigation elements */
@@ -348,5 +380,52 @@
   background-color: var(--background-primary);
   width: 20px;
   height: 20px;
+}
+
+/* Nested list styles */
+.outliner-card-list-item.has-children {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.outliner-card-list-item.has-children > .outliner-card-list-item-text {
+  font-weight: 500;
+  color: var(--text-accent);
+}
+
+/* Improve nested list indentation and styling */
+.outliner-card-list-item > ul {
+  margin-top: 8px;
+  margin-left: 10px;
+  border-left: 1px solid var(--background-modifier-border);
+  padding-left: 15px;
+}
+
+/* Additional visual indicator for parent items */
+.outliner-card-list-item.has-children::before {
+  content: "›";
+  position: absolute;
+  left: -15px;
+  color: var(--text-accent);
+  font-size: 14px;
+  transform: rotate(90deg);
+}
+
+/* Make code blocks stand out */
+.outliner-card-list-item code {
+  background-color: var(--background-secondary);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+/* Style for strong and emphasis elements */
+.outliner-card-list-item-text strong {
+  color: var(--text-accent);
+}
+
+.outliner-card-list-item-text em {
+  font-style: italic;
+  color: var(--text-muted);
 }
 

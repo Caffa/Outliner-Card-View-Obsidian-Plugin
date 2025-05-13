@@ -1,0 +1,25 @@
+/**
+ * Process markdown formatting using the plugin's processor
+ * @param text The text to process
+ * @returns Processed HTML with formatting
+ */
+processMarkdownFormatting(text: string): string {
+    return this.plugin.processMarkdownFormatting(text);
+}
+
+/**
+ * Helper method for rendering formatted bullet text
+ * Used in renderNestedList to display formatted bullet points
+ * @param listItem The list item element to add the text to
+ * @param bulletText The bullet text to format
+ */
+private renderFormattedBulletText(listItem: HTMLElement, bulletText: string) {
+    // Add the bullet text with markdown formatting
+    const textSpan = listItem.createEl('span', {
+        cls: 'outliner-card-list-item-text'
+    });
+
+    // Process markdown formatting for bold, italic, etc.
+    const processedText = this.processMarkdownFormatting(bulletText);
+    textSpan.innerHTML = processedText;
+}

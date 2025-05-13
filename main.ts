@@ -113,7 +113,11 @@ export default class OutlinerCardViewPlugin extends Plugin {
                 document.body.removeChild(tempSpan);
             }
 
-            const level = Math.floor(indentText.length / (cmEditor.options?.indentUnit || 2)) + 1; // Use indentUnit if available
+            // Calculate indentation level the same way as in parseBulletPoints
+            let tabCount = (indentText.match(/\t/g) || []).length;
+            let spaceCount = indentText.length - tabCount;
+            const level = tabCount + Math.ceil(spaceCount / 2);
+            const finalLevel = level === 0 ? 1 : level;
 
             const iconContainer = document.createElement('div');
             iconContainer.className = 'outliner-bullet-hover-container';
@@ -123,15 +127,14 @@ export default class OutlinerCardViewPlugin extends Plugin {
             const hoverIcon = document.createElement('span');
             hoverIcon.className = 'outliner-bullet-hover-icon';
             hoverIcon.textContent = '🔍';
-            hoverIcon.setAttribute('data-level', level.toString());
-            hoverIcon.title = `View as cards (level ${level})`;
+            hoverIcon.setAttribute('data-level', finalLevel.toString());
+            hoverIcon.title = `View as cards (level ${finalLevel})`;
 
             hoverIcon.addEventListener('click', (clickEvt) => {
                 clickEvt.preventDefault();
                 clickEvt.stopPropagation();
-                this.settings.defaultIndentationLevel = level;
-                this.saveSettings();
-                this.toggleCardView();
+                // Instead of changing the global setting, use the specific level for this view
+                this.toggleCardViewWithLevel(finalLevel);
                 if (this.currentHoverIcon) { // Remove icon after click
                     this.currentHoverIcon.remove();
                     this.currentHoverIcon = null;
@@ -146,8 +149,13 @@ export default class OutlinerCardViewPlugin extends Plugin {
             const iconWidthEst = 20; // Estimated width of the icon container
             const iconGap = 4;    // Gap between icon and bullet
 
+            // Position the icon to the left of the bullet text, not the indentation
             iconContainer.style.top = `${rect.top + window.scrollY}px`;
-            iconContainer.style.left = `${rect.left + window.scrollX + indentWidth - iconWidthEst - iconGap}px`;
+
+            // Adjust icon position to place it before the bullet marker regardless of indentation level
+            // This ensures icon appears for all indentation levels
+            const bulletMarkerPos = indentWidth;
+            iconContainer.style.left = `${rect.left + window.scrollX + bulletMarkerPos - iconWidthEst - iconGap}px`;
 
             this.currentHoverIcon = iconContainer;
             this.currentHoverLineId = lineId;
@@ -185,8 +193,12 @@ export default class OutlinerCardViewPlugin extends Plugin {
                 const iconWidthEst = 20;
                 const iconGap = 4;
 
+                // Maintain the same positioning logic as in mouseover
                 this.currentHoverIcon.style.top = `${rect.top + window.scrollY}px`;
-                this.currentHoverIcon.style.left = `${rect.left + window.scrollX + indentWidth - iconWidthEst - iconGap}px`;
+
+                // Adjust icon position to place it before the bullet marker regardless of indentation level
+                const bulletMarkerPos = indentWidth;
+                this.currentHoverIcon.style.left = `${rect.left + window.scrollX + bulletMarkerPos - iconWidthEst - iconGap}px`;
             } else {
                 // Line not found or no longer valid, remove the icon
                 this.currentHoverIcon.remove();
@@ -382,6 +394,80 @@ export default class OutlinerCardViewPlugin extends Plugin {
     }
 
     /**
+     * Toggles the card view overlay with a specific indentation level
+     * @param level The indentation level to use for this card view
+     */
+    async toggleCardViewWithLevel(level: number) {
+        const { workspace } = this.app;
+
+        // Clean up any hover icons
+        this.cleanupHoverIcons();
+
+        // Check if the view is already visible
+        const leaves = workspace.getLeavesOfType('outliner-card-view');
+
+        if (leaves.length > 0) {
+            // If the view is open, close it
+            leaves.forEach(leaf => leaf.detach());
+            return;
+        }
+
+        // If not visible, create and display it
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!activeView) {
+            new Notice('No active markdown view found.');
+            return;
+        }
+
+        this.activeEditor = activeView;
+
+        // Create and show overlay directly in the editor
+        const overlayEl = document.createElement('div');
+        overlayEl.id = 'outliner-card-overlay';
+        overlayEl.classList.add('outliner-card-overlay');
+        document.body.appendChild(overlayEl);
+
+        // Create the card container within the overlay
+        const cardContainer = overlayEl.createEl('div', {
+            cls: 'outliner-card-container'
+        });
+
+        // Parse the bullet points and create cards
+        const editor = this.activeEditor.editor;
+        const content = editor.getValue();
+        const bulletPoints = this.parseBulletPoints(content);
+
+        // Use the provided level instead of the default from settings
+        const targetBullets = this.getBulletsAtLevel(bulletPoints, level);
+
+        if (targetBullets.length === 0) {
+            cardContainer.createEl('div', {
+                cls: 'outliner-card-empty-state',
+                text: 'No bullet points found at the selected indentation level.'
+            });
+
+            // Add close button to empty state
+            const closeButton = cardContainer.createEl('button', {
+                cls: 'outliner-card-navigation-button',
+                text: 'Close'
+            });
+            closeButton.addEventListener('click', () => {
+                overlayEl.remove();
+            });
+
+            return;
+        }
+
+        // Create a simple card view in the overlay
+        const cardView = new OverlayCardView(this, overlayEl, cardContainer, targetBullets, this.activeEditor);
+
+        // Update the view with the specified indentation level
+        cardView.refreshWithNewIndentationLevel(level);
+
+        cardView.render();
+    }
+
+    /**
      * Updates the card view with content from the active editor
      */
     updateCardView(cardView: CardView) {
@@ -420,19 +506,25 @@ export default class OutlinerCardViewPlugin extends Plugin {
             if (bulletMatch) {
                 // Calculate indentation level based on leading whitespace
                 const indent = bulletMatch[1];
-                const level = Math.floor(indent.length / 2) + 1; // Convert spaces to level (2 spaces = 1 level)
+                // Properly handle both tab and space indentation
+                // Count tabs as 1 level each, and spaces as 1 level per 2 spaces
+                let tabCount = (indent.match(/\t/g) || []).length;
+                let spaceCount = indent.length - tabCount; // remaining chars are spaces
+                const level = tabCount + Math.ceil(spaceCount / 2);
+                // Ensure minimum level of 1
+                const finalLevel = level === 0 ? 1 : level;
                 const text = bulletMatch[3].trim();
 
                 const bulletPoint: BulletPoint = {
                     text,
-                    level,
+                    level: finalLevel,
                     children: [],
                     lineStart: i,
                     lineEnd: i
                 };
 
                 // If it's a sub-bullet of the current bullet
-                if (level > currentLevel) {
+                if (finalLevel > currentLevel) {
                     if (stack.length > 0) {
                         // Add as child to the last item in stack
                         stack[stack.length - 1].children.push(bulletPoint);
@@ -445,7 +537,7 @@ export default class OutlinerCardViewPlugin extends Plugin {
                 // If it's a sibling or higher up in the hierarchy
                 else {
                     // Pop from stack until we find the right level
-                    while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+                    while (stack.length > 0 && stack[stack.length - 1].level >= finalLevel) {
                         stack.pop();
                     }
 
@@ -459,7 +551,7 @@ export default class OutlinerCardViewPlugin extends Plugin {
                     stack.push(bulletPoint);
                 }
 
-                currentLevel = level;
+                currentLevel = finalLevel;
             }
             // If not a bullet but a continuation of the current bullet
             else if (stack.length > 0 && line.trim() !== '') {
@@ -502,6 +594,26 @@ export default class OutlinerCardViewPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
+    }
+
+    /**
+     * Process basic markdown formatting
+     * @param text The text to process
+     * @returns Processed HTML with formatting
+     */
+    processMarkdownFormatting(text: string): string {
+        // Process bold text (both **bold** and __bold__ formats)
+        let processed = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        processed = processed.replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+        // Process italic text (both *italic* and _italic_ formats)
+        processed = processed.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
+        processed = processed.replace(/_([^_]+)_/g, '<em>$1</em>');
+
+        // Process code blocks
+        processed = processed.replace(/`(.*?)`/g, '<code>$1</code>');
+
+        return processed;
     }
 }
 
@@ -662,9 +774,10 @@ class CardView extends ItemView {
         // Create card title
         if (this.plugin.settings.showCardTitle) {
             const cardTitle = container.createEl('div', {
-                cls: 'outliner-card-title',
-                text: currentCard.text
+                cls: 'outliner-card-title'
             });
+            // Add formatted title text
+            cardTitle.innerHTML = this.processMarkdownFormatting(currentCard.text);
         }
 
         // Create card content
@@ -691,6 +804,7 @@ class CardView extends ItemView {
         }
     }
 
+
     /**
      * Renders a nested list of bullet points
      * @param container The container element to add the list to
@@ -716,10 +830,7 @@ class CardView extends ItemView {
             });
 
             // Add the bullet text
-            listItem.createEl('span', {
-                cls: 'outliner-card-list-item-text',
-                text: bullet.text
-            });
+            this.renderFormattedBulletText(listItem, bullet.text);
 
             // Recursively render children if any
             if (bullet.children.length > 0) {
@@ -812,6 +923,34 @@ class CardView extends ItemView {
         document.removeEventListener('keydown', this.escapeHandler);
         this.cardViewContent.empty();
     }
+
+    /**
+     * Process markdown formatting using the plugin's processor
+     * @param text The text to process
+     * @returns Processed HTML with formatting
+     */
+    processMarkdownFormatting(text: string): string {
+        return this.plugin.processMarkdownFormatting(text);
+    }
+
+    /**
+     * Helper method for rendering formatted bullet text
+     * Used in renderNestedList to display formatted bullet points
+     * @param listItem The list item element to add the text to
+     * @param bulletText The bullet text to format
+     */
+    private renderFormattedBulletText(listItem: HTMLElement, bulletText: string) {
+        // Add the bullet text with markdown formatting
+        const textSpan = listItem.createEl('span', {
+            cls: 'outliner-card-list-item-text'
+        });
+
+        // Process markdown formatting for bold, italic, etc.
+        const processedText = this.processMarkdownFormatting(bulletText);
+        textSpan.innerHTML = processedText;
+    }
+
+
 }
 
 /**
@@ -919,21 +1058,14 @@ class OverlayCardView {
         const decreaseButton = indentationControls.createEl('button', {
             cls: 'outliner-card-indentation-button',
             text: '−'
-        });
-        decreaseButton.setAttribute('aria-label', 'Decrease indentation level');
+        });        decreaseButton.setAttribute('aria-label', 'Decrease indentation level');
         decreaseButton.addEventListener('click', () => {
             const currentLevel = this.plugin.settings.defaultIndentationLevel;
             if (currentLevel > 1) {
                 const newLevel = currentLevel - 1;
-                this.plugin.settings.defaultIndentationLevel = newLevel;
-                this.plugin.saveSettings();
-                this.refreshWithNewIndentationLevel(newLevel);
 
-                // Update the selector to reflect the new value
-                const selector = indentationControls.querySelector('.outliner-card-indentation-selector') as HTMLSelectElement;
-                if (selector) {
-                    selector.value = newLevel.toString();
-                }
+                // Try to update to the new level
+                this.refreshWithNewIndentationLevel(newLevel);
             }
         });
 
@@ -949,6 +1081,7 @@ class OverlayCardView {
                 text: i.toString()
             });
 
+            // Mark the current level as selected
             if (i === this.plugin.settings.defaultIndentationLevel) {
                 option.selected = true;
             }
@@ -958,21 +1091,17 @@ class OverlayCardView {
         const increaseButton = indentationControls.createEl('button', {
             cls: 'outliner-card-indentation-button',
             text: '+'
-        });
-        increaseButton.setAttribute('aria-label', 'Increase indentation level');
+        });        increaseButton.setAttribute('aria-label', 'Increase indentation level');
         increaseButton.addEventListener('click', () => {
             const currentLevel = this.plugin.settings.defaultIndentationLevel;
             if (currentLevel < 5) {
                 const newLevel = currentLevel + 1;
+                // Update the settings with the new level
                 this.plugin.settings.defaultIndentationLevel = newLevel;
+                // Save settings
                 this.plugin.saveSettings();
+                // Try to update to the new level
                 this.refreshWithNewIndentationLevel(newLevel);
-
-                // Update the selector to reflect the new value
-                const selector = indentationControls.querySelector('.outliner-card-indentation-selector') as HTMLSelectElement;
-                if (selector) {
-                    selector.value = newLevel.toString();
-                }
             }
         });
 
@@ -981,11 +1110,7 @@ class OverlayCardView {
             const target = e.target as HTMLSelectElement;
             const level = parseInt(target.value);
 
-            // Update settings
-            this.plugin.settings.defaultIndentationLevel = level;
-            this.plugin.saveSettings();
-
-            // Refresh cards with new indentation level
+            // Try to update to the new level
             this.refreshWithNewIndentationLevel(level);
         });
 
@@ -1070,10 +1195,11 @@ class OverlayCardView {
 
         // Create card title
         if (this.plugin.settings.showCardTitle) {
-            contentContainer.createEl('div', {
-                cls: 'outliner-card-title',
-                text: currentCard.text
+            const cardTitle = contentContainer.createEl('div', {
+                cls: 'outliner-card-title'
             });
+            // Add formatted title text
+            cardTitle.innerHTML = this.processMarkdownFormatting(currentCard.text);
         }
 
         // Create card content
@@ -1132,10 +1258,7 @@ class OverlayCardView {
             });
 
             // Add the bullet text
-            listItem.createEl('span', {
-                cls: 'outliner-card-list-item-text',
-                text: bullet.text
-            });
+            this.renderFormattedBulletText(listItem, bullet.text);
 
             // Recursively render children if any
             if (bullet.children.length > 0) {
@@ -1210,43 +1333,53 @@ class OverlayCardView {
     }
 
     /**
-     * Refresh the view with a new indentation level
-     * @param level The new indentation level
+     * Process markdown formatting using the plugin's processor
+     * @param text The text to process
+     * @returns Processed HTML with formatting
+     */
+    processMarkdownFormatting(text: string): string {
+        return this.plugin.processMarkdownFormatting(text);
+    }
+
+    /**
+     * Helper method for rendering formatted bullet text
+     * Used in renderNestedList to display formatted bullet points
+     * @param listItem The list item element to add the text to
+     * @param bulletText The bullet text to format
+     */
+    private renderFormattedBulletText(listItem: HTMLElement, bulletText: string) {
+        // Add the bullet text with markdown formatting
+        const textSpan = listItem.createEl('span', {
+            cls: 'outliner-card-list-item-text'
+        });
+
+        // Process markdown formatting for bold, italic, etc.
+        const processedText = this.processMarkdownFormatting(bulletText);
+        textSpan.innerHTML = processedText;
+    }
+
+    /**
+     * Refreshes the view with a new indentation level
+     * @param level The new indentation level to use
      */
     refreshWithNewIndentationLevel(level: number) {
         if (!this.activeEditor) return;
 
-        const editor = this.activeEditor.editor;
-        const content = editor.getValue();
+        // Update the plugin settings
+        this.plugin.settings.defaultIndentationLevel = level;
+        this.plugin.saveSettings();
 
-        // Parse the bullet points from the content
+        // Parse the bullet points with the new level
+        const content = this.activeEditor.editor.getValue();
         const bulletPoints = this.plugin.parseBulletPoints(content);
-
-        // Find bullets at the new indentation level
         const targetBullets = this.plugin.getBulletsAtLevel(bulletPoints, level);
 
-        // Update the cards
+        // Update the cards array and reset the index
         this.cards = targetBullets;
         this.currentCardIndex = 0;
 
-        // Show empty state if no cards are found
-        if (this.cards.length === 0) {
-            this.container.empty();
-            const emptyState = this.container.createEl('div', {
-                cls: 'outliner-card-empty-state',
-                text: 'No bullet points found at the selected indentation level.'
-            });
-
-            // Add close button to empty state
-            const closeButton = this.container.createEl('button', {
-                cls: 'outliner-card-navigation-button',
-                text: 'Close'
-            });
-            closeButton.addEventListener('click', () => this.close());
-        } else {
-            // Render the updated view
-            this.render();
-        }
+        // Re-render the view
+        this.render();
     }
 }
 

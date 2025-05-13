@@ -3,7 +3,7 @@
 	"name": "Outliner Card View",
 	"version": "1.0.0",
 	"minAppVersion": "1.7.7",
-	"description": "Converts nested bullet list sections into browsable cards, making it easier to review, focus on, and edit specific parts of your notes",
+	"description": "Converts nested bullet lists into focused, browsable cards. Select a specific indentation level, navigate between cards, and edit content directly within each card.",
 	"author": "Pamela Wang",
 	"authorUrl": "https://github.com/Caffa",
 	"fundingUrl": "https://ko-fi.com/pamelawang_mwahacookie",

@@ -21,5 +21,7 @@ mv outliner-card-view.zip release.zip
 git add -A
 git commit -m "Prepare for Git Release"
 # git push origin main
+echo "create a new tag for the release"
+echo "git tag TAGNUMBER"
 echo "make sure to push tag: git push origin TAGNUMBER"
 echo 'gh release create TAGNUMBER release.zip main.js manifest.json styles.css --title "TITLE" --notes "NOTES"'

@@ -114,19 +114,8 @@ export default class OutlinerCardViewPlugin extends Plugin {
                 document.body.removeChild(tempSpan);
             }
 
-            // Calculate indentation level consistent with parseBulletPoints
-            // Count both tabs and spaces for indentation
-            const tabCount = (indentText.match(/\t/g) || []).length;
-            const spaceCount = indentText.replace(/\t/g, '').length;
-            const spaceIndentLevel = Math.floor(spaceCount / 4);
-
-            // Calculate combined indentation level
-            const combinedIndent = tabCount + spaceIndentLevel;
-
-            // Use a simple approximation for hover icons
-            // Without parsing the entire document, we can't know exact level mapping
-            // But we can ensure top level (no indentation) is level 1
-            const finalLevel = combinedIndent === 0 ? 1 : combinedIndent + 1;
+            // Always use level 2 for the hover icon view
+            const finalLevel = 2;
 
             const iconContainer = document.createElement('div');
             iconContainer.className = 'outliner-bullet-hover-container';
@@ -137,7 +126,7 @@ export default class OutlinerCardViewPlugin extends Plugin {
             hoverIcon.className = 'outliner-bullet-hover-icon';
             hoverIcon.textContent = '🔍';
             hoverIcon.setAttribute('data-level', finalLevel.toString());
-            hoverIcon.title = `View as cards (level ${finalLevel})`;
+            hoverIcon.title = 'View as cards (level 2)';
 
             hoverIcon.addEventListener('click', (clickEvt) => {
                 clickEvt.preventDefault();

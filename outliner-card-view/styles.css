@@ -1,0 +1,431 @@
+/* filepath: /Users/caffae/Notes/TestPlugin/.obsidian/plugins/outliner-card-view/styles.css */
+/* Outliner Card View Plugin Styles */
+
+/* Card container */
+.outliner-card-container {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 15px 0;
+  background-color: var(--background-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Card title */
+.outliner-card-title {
+  font-size: 1.4em;
+  font-weight: bold;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+/* Card content */
+.outliner-card-content {
+  font-size: 1em;
+  color: var(--text-normal);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Card content container styling */
+.outliner-card-content-container {
+  position: relative;
+  padding: 20px;
+  background-color: var(--background-primary);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Card list */
+.outliner-card-list {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.outliner-card-list-item {
+  margin-bottom: 8px;
+  padding: 3px 0;
+}
+
+.outliner-card-list-item-text {
+  line-height: 1.5;
+}
+
+/* Improve nested list appearance */
+.outliner-card-content ul {
+  list-style-type: disc;
+}
+
+.outliner-card-content ul ul {
+  list-style-type: circle;
+}
+
+.outliner-card-content ul ul ul {
+  list-style-type: square;
+}
+
+/* Add visual separation between bullet point levels */
+.outliner-card-content ul ul {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+/* Navigation elements */
+.outliner-card-navigation {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.outliner-card-navigation-info {
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.outliner-card-navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.outliner-card-navigation-button {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 0.85em;
+  flex-grow: 0;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.outliner-card-navigation-button:hover {
+  background-color: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+}
+
+.outliner-card-navigation-home,
+.outliner-card-navigation-last {
+  background-color: var(--interactive-normal);
+  color: var(--text-normal);
+  font-size: 0.8em;
+}
+
+.outliner-card-navigation-home:hover,
+.outliner-card-navigation-last:hover {
+  background-color: var(--interactive-hover);
+}
+
+.outliner-card-selector-container {
+  flex: 1;
+  margin: 0 10px;
+}
+
+.outliner-card-selector {
+  width: 100%;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+}
+
+/* Edit button */
+.outliner-card-edit-button {
+  margin-top: 15px;
+  background-color: var(--interactive-normal);
+  color: var(--text-normal);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.outliner-card-edit-button:hover {
+  background-color: var(--interactive-hover);
+}
+
+/* Empty state */
+.outliner-card-empty-state {
+  padding: 30px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.outliner-card-empty-content {
+  padding: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Card transitions */
+.outliner-card-container.animate {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Bullet hover icon */
+.outliner-bullet-hover-icon {
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+  font-size: 14px;
+  padding: 2px;
+  border-radius: 4px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.outliner-bullet-hover-icon:hover {
+  opacity: 1;
+  background-color: var(--interactive-hover);
+}
+
+/* Container for the bullet hover icon */
+.outliner-bullet-hover-container {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+/* Make sure bullet line has space for the icon */
+.cm-line {
+  position: relative;
+}
+
+/* Hover button container for cards */
+.outliner-card-hover-buttons {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 5px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.outliner-card-container:hover .outliner-card-hover-buttons {
+  opacity: 1;
+}
+
+.outliner-card-hover-button {
+  background-color: var(--interactive-normal);
+  color: var(--text-normal);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.outliner-card-hover-button:hover {
+  background-color: var(--interactive-hover);
+}
+
+/* Card action buttons */
+.outliner-card-action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 15px;
+  gap: 8px;
+}
+
+.outliner-card-action-button {
+  background-color: var(--interactive-normal);
+  color: var(--text-normal);
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.85em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.outliner-card-action-button:hover {
+  background-color: var(--interactive-hover);
+}
+
+/* Keyboard shortcut hints */
+.outliner-keyboard-hint {
+  display: inline-block;
+  background-color: var(--background-modifier-border);
+  color: var(--text-muted);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.75em;
+  margin-left: 5px;
+}
+
+/* Overlay styles */
+.outliner-card-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.outliner-card-overlay .outliner-card-container {
+  position: relative;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.outliner-card-close-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: var(--interactive-normal);
+  color: var(--text-normal);
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+  z-index: 10;
+}
+
+.outliner-card-close-button:hover {
+  background-color: var(--interactive-hover);
+}
+
+.outliner-card-content-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+/* Indentation level controls */
+.outliner-card-indentation-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+
+.outliner-card-indentation-label {
+  font-size: 0.9em;
+  margin-right: 8px;
+  color: var(--text-muted);
+}
+
+.outliner-card-indentation-selector {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.9em;
+  cursor: pointer;
+  width: 40px;
+  text-align: center;
+}
+
+.outliner-card-indentation-button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  padding: 0;
+  margin: 0 4px;
+}
+
+.outliner-card-indentation-button:hover {
+  background-color: var(--interactive-hover);
+}
+
+/* Make sure bullet icon is visible */
+.outliner-bullet-hover-icon {
+  background-color: var(--background-primary);
+  width: 20px;
+  height: 20px;
+}
+
+/* Nested list styles */
+.outliner-card-list-item.has-children {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.outliner-card-list-item.has-children > .outliner-card-list-item-text {
+  font-weight: 500;
+  color: var(--text-accent);
+}
+
+/* Improve nested list indentation and styling */
+.outliner-card-list-item > ul {
+  margin-top: 8px;
+  margin-left: 10px;
+  border-left: 1px solid var(--background-modifier-border);
+  padding-left: 15px;
+}
+
+/* Additional visual indicator for parent items */
+.outliner-card-list-item.has-children::before {
+  content: "›";
+  position: absolute;
+  left: -15px;
+  color: var(--text-accent);
+  font-size: 14px;
+  transform: rotate(90deg);
+}
+
+/* Make code blocks stand out */
+.outliner-card-list-item code {
+  background-color: var(--background-secondary);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+/* Style for strong and emphasis elements */
+.outliner-card-list-item-text strong {
+  color: var(--text-accent);
+}
+
+.outliner-card-list-item-text em {
+  font-style: italic;
+  color: var(--text-muted);
+}
+

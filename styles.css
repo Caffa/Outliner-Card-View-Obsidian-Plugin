@@ -1,0 +1,116 @@
+/*
+
+This CSS file will be included with your plugin, and
+available in the app when your plugin is enabled.
+
+If your plugin does not need CSS, delete this file.
+
+*/
+
+/* Common button styles */
+.outliner-card-view-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+    margin: 5px;
+}
+
+.outliner-card-view-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Ribbon button styles - remove circular styling */
+.outliner-card-view-plugin.is-active,
+.outliner-card-view-save-plugin.is-active {
+    color: var(--text-on-accent);
+    background-color: var(--interactive-accent);
+}
+
+/* Remove circular styling for ribbon buttons */
+.side-dock-ribbon-action.outliner-card-view-ribbon-button {
+    border-radius: 0;
+    box-shadow: none;
+    margin: 6px auto;
+    opacity: 1;
+}
+
+.side-dock-ribbon-action.outliner-card-view-ribbon-button:hover {
+    transform: none;
+    box-shadow: none;
+    background-color: var(--interactive-hover);
+}
+
+/* Floating container styles - updated for individual positioning */
+.outliner-card-view-floating-container {
+    position: fixed;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 5px;
+    pointer-events: auto; /* Ensure clickability */
+}
+
+/* Positioning classes for floating containers */
+.outliner-card-view-left {
+    left: 20px;
+    right: auto;
+}
+
+.outliner-card-view-right {
+    right: 20px;
+    left: auto;
+}
+
+.outliner-card-view-top {
+    top: 20px;
+    bottom: auto;
+    transform: none;
+}
+
+.outliner-card-view-middle {
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+}
+
+.outliner-card-view-bottom {
+    bottom: 20px;
+    top: auto;
+    transform: none;
+}
+
+/* Top of note container styles */
+.outliner-card-view-top-note-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    justify-content: flex-end;
+}
+
+/* Modal styles */
+.outliner-card-view-modal-input {
+    width: 100%;
+}
+
+.outliner-card-view-modal-button-container {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.outliner-card-view-modal-cancel-button {
+    margin-right: 0.5rem;
+}
+

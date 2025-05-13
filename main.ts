@@ -768,9 +768,14 @@ class CardView extends ItemView {
         // Add options for each card
         this.cards.forEach((card, index) => {
             const option = selector.createEl('option', {
-                value: index.toString(),
-                text: card.text
+                value: index.toString()
             });
+
+            // Create a temporary div to process markdown and get plain text
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = this.processMarkdownFormatting(card.text);
+            // Get text content strips HTML tags but preserves emojis
+            option.text = tempDiv.textContent || card.text;
 
             if (index === this.currentCardIndex) {
                 option.selected = true;
@@ -1190,9 +1195,14 @@ class OverlayCardView {
         // Add options for each card
         this.cards.forEach((card, index) => {
             const option = selector.createEl('option', {
-                value: index.toString(),
-                text: card.text
+                value: index.toString()
             });
+
+            // Create a temporary div to process markdown and get plain text
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = this.processMarkdownFormatting(card.text);
+            // Get text content strips HTML tags but preserves emojis
+            option.text = tempDiv.textContent || card.text;
 
             if (index === this.currentCardIndex) {
                 option.selected = true;

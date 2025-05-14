@@ -834,7 +834,6 @@ class CardView extends ItemView {
         }
     }
 
-
     /**
      * Renders a nested list of bullet points
      * @param container The container element to add the list to
@@ -983,7 +982,6 @@ class CardView extends ItemView {
         textSpan.innerHTML = processedText;
     }
 
-
 }
 
 /**
@@ -1096,8 +1094,7 @@ class OverlayCardView {
             const currentLevel = this.plugin.settings.defaultIndentationLevel;
             if (currentLevel > 1) {
                 const newLevel = currentLevel - 1;
-
-                // Try to update to the new level
+                // Simply use the refreshWithNewIndentationLevel method which handles saving settings
                 this.refreshWithNewIndentationLevel(newLevel);
             }
         });
@@ -1129,11 +1126,7 @@ class OverlayCardView {
             const currentLevel = this.plugin.settings.defaultIndentationLevel;
             if (currentLevel < 5) {
                 const newLevel = currentLevel + 1;
-                // Update the settings with the new level
-                this.plugin.settings.defaultIndentationLevel = newLevel;
-                // Save settings
-                this.plugin.saveSettings();
-                // Try to update to the new level
+                // Simply use the refreshWithNewIndentationLevel method which handles saving settings
                 this.refreshWithNewIndentationLevel(newLevel);
             }
         });
@@ -1406,9 +1399,11 @@ class OverlayCardView {
     refreshWithNewIndentationLevel(level: number) {
         if (!this.activeEditor) return;
 
-        // Update the plugin settings
-        this.plugin.settings.defaultIndentationLevel = level;
-        this.plugin.saveSettings();
+        // Update the plugin settings once
+        if (this.plugin.settings.defaultIndentationLevel !== level) {
+            this.plugin.settings.defaultIndentationLevel = level;
+            this.plugin.saveSettings();
+        }
 
         // Parse the bullet points with the new level
         const content = this.activeEditor.editor.getValue();

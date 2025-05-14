@@ -30,6 +30,7 @@ export default class OutlinerCardViewPlugin extends Plugin {
     private activeLeafChange: any = null;
     private currentHoverIcon: HTMLElement | null = null;
     private currentHoverLineId: string | null = null;
+    currentOverlay: HTMLElement | null = null; // Track the current overlay element
 
     async onload() {
         await this.loadSettings();
@@ -127,8 +128,54 @@ export default class OutlinerCardViewPlugin extends Plugin {
             hoverIcon.addEventListener('click', (clickEvt) => {
                 clickEvt.preventDefault();
                 clickEvt.stopPropagation();
-                // Instead of changing the global setting, use the specific level for this view
-                this.toggleCardViewWithLevel(finalLevel);
+
+                // Extract relevant info from the current editor state
+                const editor = markdownView.editor;
+                const lineCount = editor.lineCount();
+
+                // Get the line element corresponding to the hover icon
+                const lineElement = document.getElementById(lineId);
+                if (!lineElement) return;
+
+                // Find the line number by comparing text content with editor lines
+                const lineTextContent = lineElement.textContent || '';
+                let targetLine = -1;
+
+                // First, try an exact match based on text content
+                for (let i = 0; i < lineCount; i++) {
+                    const editorLine = editor.getLine(i);
+                    if (editorLine === lineTextContent) {
+                        targetLine = i;
+                        break;
+                    }
+                }
+
+                // If exact match failed, try a more flexible match
+                if (targetLine === -1) {
+                    // Try to match by trimming and using the first part of the line
+                    const trimmedContent = lineTextContent.trim();
+                    for (let i = 0; i < lineCount; i++) {
+                        const editorLine = editor.getLine(i).trim();
+                        if (editorLine === trimmedContent ||
+                            editorLine.startsWith(trimmedContent.substring(0, Math.min(30, trimmedContent.length)))) {
+                            targetLine = i;
+                            break;
+                        }
+                    }
+                }
+
+                // If we still couldn't find a match, use the cursor position as fallback
+                if (targetLine === -1) {
+                    const cursorPos = editor.getCursor();
+                    targetLine = cursorPos.line;
+                }
+
+                console.log(`Clicked on hover icon for line content: "${lineTextContent.substring(0, 30)}..."`);
+                console.log(`Detected line number: ${targetLine}`);
+
+                // Toggle card view with the specified level and navigate to the card for this line
+                this.toggleCardViewWithLevel(finalLevel, targetLine);
+
                 if (this.currentHoverIcon) { // Remove icon after click
                     this.currentHoverIcon.remove();
                     this.currentHoverIcon = null;
@@ -291,9 +338,26 @@ export default class OutlinerCardViewPlugin extends Plugin {
         document.querySelectorAll('.outliner-bullet-hover-container').forEach(container => container.remove());
     }
 
+    /**
+     * Clean up any existing overlay
+     */
+    private cleanupOverlay() {
+        // Remove any existing overlay element
+        if (this.currentOverlay) {
+            this.currentOverlay.remove();
+            this.currentOverlay = null;
+        }
+
+        // Fallback: remove any other overlays that might have been orphaned
+        document.querySelectorAll('#outliner-card-overlay').forEach(overlay => overlay.remove());
+    }
+
     onunload() {
         // Clean up any hover icons
         this.cleanupHoverIcons();
+
+        // Clean up any overlay
+        this.cleanupOverlay();
 
         // Clean up view
         this.app.workspace.detachLeavesOfType('outliner-card-view');
@@ -328,6 +392,9 @@ export default class OutlinerCardViewPlugin extends Plugin {
         // Clean up any hover icons
         this.cleanupHoverIcons();
 
+        // Clean up any existing overlay
+        this.cleanupOverlay();
+
         // Check if the view is already visible
         const leaves = workspace.getLeavesOfType('outliner-card-view');
 
@@ -351,6 +418,9 @@ export default class OutlinerCardViewPlugin extends Plugin {
         overlayEl.id = 'outliner-card-overlay';
         overlayEl.classList.add('outliner-card-overlay');
         document.body.appendChild(overlayEl);
+
+        // Track the current overlay
+        this.currentOverlay = overlayEl;
 
         // Create the card container within the overlay
         const cardContainer = overlayEl.createEl('div', {
@@ -377,6 +447,8 @@ export default class OutlinerCardViewPlugin extends Plugin {
             });
             closeButton.addEventListener('click', () => {
                 overlayEl.remove();
+                // Clear the reference to the overlay
+                this.currentOverlay = null;
             });
 
             return;
@@ -390,12 +462,16 @@ export default class OutlinerCardViewPlugin extends Plugin {
     /**
      * Toggles the card view overlay with a specific indentation level
      * @param level The indentation level to use for this card view
+     * @param lineNumber Optional line number to navigate to the corresponding card
      */
-    async toggleCardViewWithLevel(level: number) {
+    async toggleCardViewWithLevel(level: number, lineNumber?: number) {
         const { workspace } = this.app;
 
         // Clean up any hover icons
         this.cleanupHoverIcons();
+
+        // Clean up any existing overlay
+        this.cleanupOverlay();
 
         // Check if the view is already visible
         const leaves = workspace.getLeavesOfType('outliner-card-view');
@@ -420,6 +496,9 @@ export default class OutlinerCardViewPlugin extends Plugin {
         overlayEl.id = 'outliner-card-overlay';
         overlayEl.classList.add('outliner-card-overlay');
         document.body.appendChild(overlayEl);
+
+        // Track the current overlay
+        this.currentOverlay = overlayEl;
 
         // Create the card container within the overlay
         const cardContainer = overlayEl.createEl('div', {
@@ -451,6 +530,8 @@ export default class OutlinerCardViewPlugin extends Plugin {
             });
             closeButton.addEventListener('click', () => {
                 overlayEl.remove();
+                // Clear the reference to the overlay
+                this.currentOverlay = null;
             });
 
             return;
@@ -459,10 +540,75 @@ export default class OutlinerCardViewPlugin extends Plugin {
         // Create a simple card view in the overlay
         const cardView = new OverlayCardView(this, overlayEl, cardContainer, targetBullets, this.activeEditor);
 
-        // Update the view with the specified indentation level
-        cardView.refreshWithNewIndentationLevel(level);
+        // If a line number was provided, find the corresponding bullet point
+        if (lineNumber !== undefined && lineNumber >= 0) {
+            // Find the index of the bullet point that contains the line
+            let targetIndex = 0;
+            let foundCard = false;
 
-        cardView.render();
+            console.log(`Finding card for line ${lineNumber} among ${targetBullets.length} cards`);
+
+            // First pass: look for exact line range matches
+            for (let i = 0; i < targetBullets.length; i++) {
+                const bullet = targetBullets[i];
+                console.log(`Card ${i}: lines ${bullet.lineStart}-${bullet.lineEnd}, text: "${bullet.text.substring(0, 30)}..."`);
+
+                // Check if the line is within this bullet point's range
+                if (lineNumber >= bullet.lineStart && lineNumber <= bullet.lineEnd) {
+                    targetIndex = i;
+                    foundCard = true;
+                    console.log(`Found exact matching card at index ${i}`);
+                    break;
+                }
+            }
+
+            if (!foundCard) {
+                // Second pass: If no exact match found, find the closest bullet point before the line
+                console.log("No exact match found, searching for closest bullet point");
+                let bestMatch = -1;
+                let bestDistance = Number.MAX_SAFE_INTEGER;
+
+                // First preference: bullet points before the clicked line
+                for (let i = 0; i < targetBullets.length; i++) {
+                    const bullet = targetBullets[i];
+                    if (bullet.lineStart <= lineNumber) {
+                        const distance = lineNumber - bullet.lineStart;
+                        if (distance < bestDistance) {
+                            bestDistance = distance;
+                            bestMatch = i;
+                        }
+                    }
+                }
+
+                // If no bullets found before the line, find closest one after
+                if (bestMatch === -1) {
+                    bestDistance = Number.MAX_SAFE_INTEGER;
+                    for (let i = 0; i < targetBullets.length; i++) {
+                        const bullet = targetBullets[i];
+                        const distance = bullet.lineStart - lineNumber;
+                        if (distance < bestDistance) {
+                            bestDistance = distance;
+                            bestMatch = i;
+                        }
+                    }
+                }
+
+                if (bestMatch !== -1) {
+                    targetIndex = bestMatch;
+                    console.log(`Selected closest card at index ${targetIndex}`);
+                }
+            }
+
+            // Update the view with the specified indentation level
+            // Pass false to prevent resetting the card index when changing level
+            cardView.refreshWithNewIndentationLevel(level, false);
+
+            // Navigate to the selected card
+            cardView.navigateToSpecificCard(targetIndex);
+        } else {
+            // Update the view with the specified indentation level (and default to first card)
+            cardView.refreshWithNewIndentationLevel(level);
+        }
     }
 
     /**
@@ -902,6 +1048,7 @@ class CardView extends ItemView {
             index = this.cards.length - 1;
         }
 
+        console.log(`Navigating to card ${index + 1}/${this.cards.length}: "${this.cards[index].text.substring(0, 30)}..."`);
         this.currentCardIndex = index;
         this.render();
     }
@@ -1043,6 +1190,11 @@ class OverlayCardView {
     close() {
         document.removeEventListener('keydown', this.handleKeydown);
         this.overlay.remove();
+
+        // Clear the reference in the plugin
+        if (this.plugin.currentOverlay === this.overlay) {
+            this.plugin.currentOverlay = null;
+        }
     }
 
     /**
@@ -1332,6 +1484,7 @@ class OverlayCardView {
             index = this.cards.length - 1;
         }
 
+        console.log(`Navigating to card ${index + 1}/${this.cards.length}: "${this.cards[index].text.substring(0, 30)}..."`);
         this.currentCardIndex = index;
         this.render();
     }
@@ -1391,8 +1544,9 @@ class OverlayCardView {
     /**
      * Refreshes the view with a new indentation level
      * @param level The new indentation level to use
+     * @param resetIndex Whether to reset the card index to 0 (default: true)
      */
-    refreshWithNewIndentationLevel(level: number) {
+    refreshWithNewIndentationLevel(level: number, resetIndex: boolean = true) {
         if (!this.activeEditor) return;
 
         // Update the plugin settings once
@@ -1406,9 +1560,17 @@ class OverlayCardView {
         const bulletPoints = this.plugin.parseBulletPoints(content);
         const targetBullets = this.plugin.getBulletsAtLevel(bulletPoints, level);
 
-        // Update the cards array and reset the index
+        // Update the cards array
         this.cards = targetBullets;
-        this.currentCardIndex = 0;
+
+        // Reset the index if specified
+        if (resetIndex) {
+            this.currentCardIndex = 0;
+        } else if (this.currentCardIndex >= this.cards.length) {
+            // If the current index is now out of bounds after changing levels,
+            // set it to the last card
+            this.currentCardIndex = Math.max(0, this.cards.length - 1);
+        }
 
         // Re-render the view
         this.render();

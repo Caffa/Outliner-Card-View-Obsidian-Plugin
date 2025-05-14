@@ -2,20 +2,16 @@ import { App, Plugin, PluginSettingTab, Setting, MarkdownView, Notice, Modal, TF
 
 interface OutlinerCardViewSettings {
     defaultIndentationLevel: number;
-    cardViewPosition: 'right' | 'left' | 'bottom';
     showCardTitle: boolean;
     allowEditing: boolean;
-    showCardNavigation: boolean;
     cardTransitionAnimation: boolean;
     showHoverButtons: boolean;
 }
 
 const DEFAULT_SETTINGS: OutlinerCardViewSettings = {
     defaultIndentationLevel: 2,
-    cardViewPosition: 'right',
     showCardTitle: true,
     allowEditing: true,
-    showCardNavigation: true,
     cardTransitionAnimation: true,
     showHoverButtons: true
 }
@@ -1443,20 +1439,6 @@ class OutlinerCardViewSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // Card view position setting
-        new Setting(containerEl)
-            .setName('Card View Position')
-            .setDesc('Choose where to display the card view panel')
-            .addDropdown(dropdown => dropdown
-                .addOption('right', 'Right Side')
-                .addOption('left', 'Left Side')
-                .addOption('bottom', 'Bottom')
-                .setValue(this.plugin.settings.cardViewPosition)
-                .onChange(async (value: 'right' | 'left' | 'bottom') => {
-                    this.plugin.settings.cardViewPosition = value;
-                    await this.plugin.saveSettings();
-                }));
-
         // Show card title setting
         new Setting(containerEl)
             .setName('Show Card Title')
@@ -1476,17 +1458,6 @@ class OutlinerCardViewSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.allowEditing)
                 .onChange(async (value) => {
                     this.plugin.settings.allowEditing = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        // Show card navigation setting
-        new Setting(containerEl)
-            .setName('Show Card Navigation')
-            .setDesc('Show navigation controls for moving between cards')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.showCardNavigation)
-                .onChange(async (value) => {
-                    this.plugin.settings.showCardNavigation = value;
                     await this.plugin.saveSettings();
                 }));
 

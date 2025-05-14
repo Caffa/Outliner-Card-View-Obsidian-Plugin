@@ -4,6 +4,8 @@ The **Outliner Card View Plugin** transforms your nested bullet lists in Obsidia
 
 ![Card View](visuals/card-view.png)
 
+[![Video](https://github.com/user-attachments/assets/a4568994-7387-42ad-98e8-96c73a09c811)](https://youtu.be/VDxBUQ4sGuo)
+
 [Post Explaination](https://typefully.com/MwahaCookie/RnMcnpm)
 
 ## Features

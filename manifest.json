@@ -1,7 +1,7 @@
 {
 	"id": "outliner-card-view",
 	"name": "Outliner Card View",
-	"version": "1.0.9",
+	"version": "1.0.10",
 	"minAppVersion": "1.7.7",
 	"description": "Converts nested bullet lists into focused, browsable cards. Select a specific indentation level, navigate between cards, and edit content directly within each card.",
 	"author": "Pamela Wang",
@@ -10,4 +10,3 @@
 	"isDesktopOnly": false,
 	"styles": "styles.css"
 }
-

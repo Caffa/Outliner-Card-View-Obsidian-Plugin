@@ -1,6 +1,6 @@
 {
   "name": "outliner-card-view",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "In one click, it copies the active file to the clipboard (as markdown), including block references. Useful for sharing notes with others or to LLM.",
   "main": "main.js",
   "scripts": {

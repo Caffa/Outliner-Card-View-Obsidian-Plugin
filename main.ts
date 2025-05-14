@@ -1588,6 +1588,9 @@ class OutlinerCardViewSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
 
+        // Clear the container element to prevent duplicate settings
+        containerEl.empty();
+
         // Indentation level setting
         new Setting(containerEl)
             .setName('Default Indentation Level')

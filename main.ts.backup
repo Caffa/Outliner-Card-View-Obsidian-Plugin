@@ -1,6 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownView, Notice, Modal, TFile, WorkspaceLeaf, EditorPosition, ItemView, Modifier } from 'obsidian';
-
-type ModifierOption = 'none' | 'alt' | 'ctrl' | 'shift' | 'alt+ctrl' | 'alt+shift' | 'ctrl+shift' | 'alt+ctrl+shift';
+import { App, Plugin, PluginSettingTab, Setting, MarkdownView, Notice, Modal, TFile, WorkspaceLeaf, EditorPosition, ItemView } from 'obsidian';
 
 interface OutlinerCardViewSettings {
     defaultIndentationLevel: number;
@@ -8,10 +6,9 @@ interface OutlinerCardViewSettings {
     allowEditing: boolean;
     cardTransitionAnimation: boolean;
     showHoverButtons: boolean;
-    toggleCardViewModifiers: ModifierOption;
-    toggleCardViewKey: string;
-    nextCardModifiers: ModifierOption;
-    previousCardModifiers: ModifierOption;
+    toggleCardViewHotkey: boolean;
+    nextCardHotkey: boolean;
+    previousCardHotkey: boolean;
 }
 
 const DEFAULT_SETTINGS: OutlinerCardViewSettings = {
@@ -20,10 +17,9 @@ const DEFAULT_SETTINGS: OutlinerCardViewSettings = {
     allowEditing: true,
     cardTransitionAnimation: true,
     showHoverButtons: true,
-    toggleCardViewModifiers: 'ctrl+shift', // Default to Ctrl+Shift
-    toggleCardViewKey: 'O', // Default to O key
-    nextCardModifiers: 'none',
-    previousCardModifiers: 'none'
+    toggleCardViewHotkey: false,
+    nextCardHotkey: false,
+    previousCardHotkey: false
 }
 
 interface BulletPoint {
@@ -44,33 +40,6 @@ export default class OutlinerCardViewPlugin extends Plugin {
     currentCardView: CardView | OverlayCardView | null = null; // Track the current active card view (overlay or normal view)
     private hotkeyHandler: (evt: KeyboardEvent) => void; // Global hotkey handler
 
-    /**
-     * Converts a ModifierOption string to an array of modifiers for Obsidian hotkeys
-     * @param modifierSetting The modifier setting string (e.g., 'ctrl+shift')
-     * @returns Array of modifier strings as expected by Obsidian
-     */
-    private getModifiersFromSetting(modifierSetting: ModifierOption): Modifier[] {
-        const modifiers: Modifier[] = [];
-
-        if (modifierSetting === 'none') {
-            return modifiers;
-        }
-
-        if (modifierSetting.includes('ctrl')) {
-            modifiers.push('Mod');
-        }
-
-        if (modifierSetting.includes('shift')) {
-            modifiers.push('Shift');
-        }
-
-        if (modifierSetting.includes('alt')) {
-            modifiers.push('Alt');
-        }
-
-        return modifiers;
-    }
-
     async onload() {
         await this.loadSettings();
         console.log('Loading Outliner Card View Plugin');
@@ -81,37 +50,33 @@ export default class OutlinerCardViewPlugin extends Plugin {
             (leaf) => new CardView(leaf, this)
         );
 
-        // Setup hotkey handler to only capture navigation hotkeys when card view is active
-        // Toggle card view hotkey is handled by Obsidian's hotkey system
+        // Setup global hotkey handler to only capture hotkeys when card view is active
         this.hotkeyHandler = (evt: KeyboardEvent) => {
-            // Only handle navigation hotkeys if a card view is active
+            // Only handle hotkeys if card view is active
             if (!this.currentCardView && !this.getCardView()) {
                 return;
             }
 
-            // Check for next card hotkey (ArrowRight with optional modifiers)
-            if (evt.key === 'ArrowRight') {
-                // Check if the required modifier keys match the settings
-                const modifierMatch = this.checkHotkeyModifiers(evt, this.settings.nextCardModifiers);
-                if (modifierMatch) {
-                    this.navigateNextCard();
-                    evt.preventDefault();
-                    return;
-                }
+            // Check for next card hotkey (Alt+ArrowRight)
+            if (evt.key === 'ArrowRight' && evt.altKey && this.settings.nextCardHotkey) {
+                this.navigateNextCard();
+                evt.preventDefault();
+                return;
             }
 
-            // Check for previous card hotkey (ArrowLeft with optional modifiers)
-            if (evt.key === 'ArrowLeft') {
-                // Check if the required modifier keys match the settings
-                const modifierMatch = this.checkHotkeyModifiers(evt, this.settings.previousCardModifiers);
-                if (modifierMatch) {
-                    this.navigatePreviousCard();
-                    evt.preventDefault();
-                    return;
-                }
+            // Check for previous card hotkey (Alt+ArrowLeft)
+            if (evt.key === 'ArrowLeft' && evt.altKey && this.settings.previousCardHotkey) {
+                this.navigatePreviousCard();
+                evt.preventDefault();
+                return;
             }
 
-            // Note: Toggle card view hotkey is handled via the Obsidian command system
+            // Check for toggle card view hotkey (Mod+Shift+O)
+            if (evt.key === 'o' && evt.shiftKey && (evt.ctrlKey || evt.metaKey) && this.settings.toggleCardViewHotkey) {
+                this.toggleCardView();
+                evt.preventDefault();
+                return;
+            }
         };
 
         // Register the global hotkey handler
@@ -323,15 +288,20 @@ export default class OutlinerCardViewPlugin extends Plugin {
             }
         }, { passive: true });
 
-        // Command to toggle card view - uses Obsidian's hotkey system
+        // Command to toggle card view
         this.addCommand({
             id: 'toggle-card-view',
             name: 'Toggle Card View',
             callback: () => this.toggleCardView(),
-            hotkeys: []
+            hotkeys: this.settings.toggleCardViewHotkey ? [
+                {
+                    modifiers: ["Mod", "Shift"],
+                    key: "O"
+                }
+            ] : []
         });
 
-        // Command to show next card - no global hotkey, handled conditionally by custom handler
+        // Command to show next card
         this.addCommand({
             id: 'next-card',
             name: 'Show Next Card',
@@ -340,10 +310,15 @@ export default class OutlinerCardViewPlugin extends Plugin {
                     new Notice('Card view is not active');
                 }
             },
-            hotkeys: [] // Remove global hotkey binding - handled by custom handler only when card view is active
+            hotkeys: this.settings.nextCardHotkey ? [
+                {
+                    modifiers: ["Alt"],
+                    key: "ArrowRight"
+                }
+            ] : []
         });
 
-        // Command to show previous card - no global hotkey, handled conditionally by custom handler
+        // Command to show previous card
         this.addCommand({
             id: 'previous-card',
             name: 'Show Previous Card',
@@ -352,7 +327,12 @@ export default class OutlinerCardViewPlugin extends Plugin {
                     new Notice('Card view is not active');
                 }
             },
-            hotkeys: [] // Remove global hotkey binding - handled by custom handler only when card view is active
+            hotkeys: this.settings.previousCardHotkey ? [
+                {
+                    modifiers: ["Alt"],
+                    key: "ArrowLeft"
+                }
+            ] : []
         });
 
         // Listen for changes in the active leaf
@@ -409,7 +389,7 @@ export default class OutlinerCardViewPlugin extends Plugin {
     onunload() {
         console.log('Unloading Outliner Card View Plugin');
 
-        // Remove the navigation hotkey handler
+        // Remove the global hotkey handler
         document.removeEventListener('keydown', this.hotkeyHandler);
 
         // Clean up any hover icons
@@ -810,35 +790,6 @@ export default class OutlinerCardViewPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
-    }
-
-    /**
-     * Helper method to check if the keyboard event modifiers match the required modifiers
-     * @param evt The keyboard event
-     * @param modifierSetting The modifier setting to check against
-     * @returns true if the modifiers match
-     */
-    checkHotkeyModifiers(evt: KeyboardEvent, modifierSetting: ModifierOption): boolean {
-        switch (modifierSetting) {
-            case 'none':
-                return !evt.altKey && !evt.ctrlKey && !evt.metaKey && !evt.shiftKey;
-            case 'alt':
-                return evt.altKey && !evt.ctrlKey && !evt.metaKey && !evt.shiftKey;
-            case 'ctrl':
-                return !evt.altKey && (evt.ctrlKey || evt.metaKey) && !evt.shiftKey;
-            case 'shift':
-                return !evt.altKey && !evt.ctrlKey && !evt.metaKey && evt.shiftKey;
-            case 'alt+ctrl':
-                return evt.altKey && (evt.ctrlKey || evt.metaKey) && !evt.shiftKey;
-            case 'alt+shift':
-                return evt.altKey && !evt.ctrlKey && !evt.metaKey && evt.shiftKey;
-            case 'ctrl+shift':
-                return !evt.altKey && (evt.ctrlKey || evt.metaKey) && evt.shiftKey;
-            case 'alt+ctrl+shift':
-                return evt.altKey && (evt.ctrlKey || evt.metaKey) && evt.shiftKey;
-            default:
-                return false;
-        }
     }
 
     /**
@@ -1309,20 +1260,12 @@ class OverlayCardView {
     private handleKeydown = (evt: KeyboardEvent) => {
         if (evt.key === 'Escape') {
             this.close();
-        } else if (evt.key === 'ArrowLeft') {
-            // Check if the required modifier keys match the settings
-            const modifierMatch = this.plugin.checkHotkeyModifiers(evt, this.plugin.settings.previousCardModifiers);
-            if (modifierMatch) {
-                this.navigateToCard(-1);
-                evt.preventDefault();
-            }
-        } else if (evt.key === 'ArrowRight') {
-            // Check if the required modifier keys match the settings
-            const modifierMatch = this.plugin.checkHotkeyModifiers(evt, this.plugin.settings.nextCardModifiers);
-            if (modifierMatch) {
-                this.navigateToCard(1);
-                evt.preventDefault();
-            }
+        } else if (evt.key === 'ArrowLeft' && evt.altKey) {
+            this.navigateToCard(-1);
+            evt.preventDefault();
+        } else if (evt.key === 'ArrowRight' && evt.altKey) {
+            this.navigateToCard(1);
+            evt.preventDefault();
         }
     }
 
@@ -1794,52 +1737,41 @@ class OutlinerCardViewSettingTab extends PluginSettingTab {
         // Hotkey settings section
         containerEl.createEl('h2', { text: 'Hotkeys' });
 
-        // Toggle card view hotkey note
+        // Toggle card view hotkey
         new Setting(containerEl)
             .setName('Toggle Card View Hotkey')
-            .setDesc('Use the Obsidian Hotkeys settings panel to configure the Toggle Card View hotkey');
+            .setDesc('Set the hotkey for toggling the card view')
+            .addText(text => text
+                .setValue('')
+                .setPlaceholder('Example: Mod+Shift+O')
+                .onChange(async (value) => {
+                    this.plugin.settings.toggleCardViewHotkey = value.trim() !== '';
+                    await this.plugin.saveSettings();
+                }));
 
         // Next card hotkey
         new Setting(containerEl)
-            .setName('Next Card Navigation')
-            .setDesc('Select modifiers for ArrowRight to navigate to the next card (only works when card view is active)')
-            .addDropdown(dropdown => {
-                dropdown
-                    .addOption('none', 'ArrowRight')
-                    .addOption('alt', 'Alt+ArrowRight')
-                    .addOption('ctrl', 'Ctrl+ArrowRight')
-                    .addOption('shift', 'Shift+ArrowRight')
-                    .addOption('alt+ctrl', 'Alt+Ctrl+ArrowRight')
-                    .addOption('alt+shift', 'Alt+Shift+ArrowRight')
-                    .addOption('ctrl+shift', 'Ctrl+Shift+ArrowRight')
-                    .addOption('alt+ctrl+shift', 'Alt+Ctrl+Shift+ArrowRight')
-                    .setValue(this.plugin.settings.nextCardModifiers)
-                    .onChange(async (value: ModifierOption) => {
-                        this.plugin.settings.nextCardModifiers = value;
-                        await this.plugin.saveSettings();
-                    });
-            });
+            .setName('Next Card Hotkey')
+            .setDesc('Set the hotkey for showing the next card')
+            .addText(text => text
+                .setValue('')
+                .setPlaceholder('Example: Alt+ArrowRight')
+                .onChange(async (value) => {
+                    this.plugin.settings.nextCardHotkey = value.trim() !== '';
+                    await this.plugin.saveSettings();
+                }));
 
         // Previous card hotkey
         new Setting(containerEl)
-            .setName('Previous Card Navigation')
-            .setDesc('Select modifiers for ArrowLeft to navigate to the previous card (only works when card view is active)')
-            .addDropdown(dropdown => {
-                dropdown
-                    .addOption('none', 'ArrowLeft')
-                    .addOption('alt', 'Alt+ArrowLeft')
-                    .addOption('ctrl', 'Ctrl+ArrowLeft')
-                    .addOption('shift', 'Shift+ArrowLeft')
-                    .addOption('alt+ctrl', 'Alt+Ctrl+ArrowLeft')
-                    .addOption('alt+shift', 'Alt+Shift+ArrowLeft')
-                    .addOption('ctrl+shift', 'Ctrl+Shift+ArrowLeft')
-                    .addOption('alt+ctrl+shift', 'Alt+Ctrl+Shift+ArrowLeft')
-                    .setValue(this.plugin.settings.previousCardModifiers)
-                    .onChange(async (value: ModifierOption) => {
-                        this.plugin.settings.previousCardModifiers = value;
-                        await this.plugin.saveSettings();
-                    });
-            });
+            .setName('Previous Card Hotkey')
+            .setDesc('Set the hotkey for showing the previous card')
+            .addText(text => text
+                .setValue('')
+                .setPlaceholder('Example: Alt+ArrowLeft')
+                .onChange(async (value) => {
+                    this.plugin.settings.previousCardHotkey = value.trim() !== '';
+                    await this.plugin.saveSettings();
+                }));
     }
 }
 

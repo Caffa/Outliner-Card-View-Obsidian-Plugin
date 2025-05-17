@@ -1794,15 +1794,16 @@ class OutlinerCardViewSettingTab extends PluginSettingTab {
         // Hotkey settings section
         containerEl.createEl('h2', { text: 'Hotkeys' });
 
-        // Toggle card view hotkey note
-        new Setting(containerEl)
-            .setName('Toggle Card View Hotkey')
-            .setDesc('Use the Obsidian Hotkeys settings panel to configure the Toggle Card View hotkey');
-
         // Next card hotkey
         new Setting(containerEl)
-            .setName('Next Card Navigation')
-            .setDesc('Select modifiers for ArrowRight to navigate to the next card (only works when card view is active)')
+            .setName('Next Card Hotkey')
+            .setDesc('Enable ArrowRight (with optional modifiers) for navigating to the next card (only works when card view is active)')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.nextCardHotkey)
+                .onChange(async (value) => {
+                    this.plugin.settings.nextCardHotkey = value;
+                    await this.plugin.saveSettings();
+                }))
             .addDropdown(dropdown => {
                 dropdown
                     .addOption('none', 'ArrowRight')
@@ -1822,8 +1823,14 @@ class OutlinerCardViewSettingTab extends PluginSettingTab {
 
         // Previous card hotkey
         new Setting(containerEl)
-            .setName('Previous Card Navigation')
-            .setDesc('Select modifiers for ArrowLeft to navigate to the previous card (only works when card view is active)')
+            .setName('Previous Card Hotkey')
+            .setDesc('Enable ArrowLeft (with optional modifiers) for navigating to the previous card (only works when card view is active)')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.previousCardHotkey)
+                .onChange(async (value) => {
+                    this.plugin.settings.previousCardHotkey = value;
+                    await this.plugin.saveSettings();
+                }))
             .addDropdown(dropdown => {
                 dropdown
                     .addOption('none', 'ArrowLeft')
